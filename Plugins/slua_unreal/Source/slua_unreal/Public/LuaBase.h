@@ -59,11 +59,15 @@ namespace NS_SLUA {
 	protected:
 		
 		inline UGameInstance* getGameInstance(AActor* self) {
-			return self->GetGameInstance();
+			if (self->GetWorld())
+				return self->GetGameInstance();
+			return nullptr;
 		}
 
 		inline UGameInstance* getGameInstance(UActorComponent* self) {
-			return self->GetOwner()->GetGameInstance();
+			if (self->GetOwner())
+				return self->GetOwner()->GetGameInstance();
+			return nullptr;
 		}
 
 		inline UGameInstance* getGameInstance(UUserWidget* self) {

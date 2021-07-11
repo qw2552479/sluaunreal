@@ -24,12 +24,27 @@
 #include "LuaBlueprintLibrary.h"
 #include "LuaActor.generated.h"
 
+#define LUABASE_INIT_TABLE(NAME) 
+	/*if (init(this, #NAME, LuaStateName, LuaFilePath)) { \
+		PrimaryActorTick.SetTickFunctionEnable(postInit("bCanEverTick")); \
+	} \*/
+
+#define LUABASE_COMPONENT_INIT_TABLE(NAME) 
+	/*if (init(this, #NAME, LuaStateName, LuaFilePath)) { \
+		PrimaryComponentTick.SetTickFunctionEnable(postInit("bCanEverTick")); \
+	} \*/
+
 #define LUABASE_BODY(NAME) \
+public: \
+	virtual void PostInitProperties() override { \
+		Super::PostInitProperties(); \
+		if (init(this, #NAME, LuaStateName, LuaFilePath)) { \
+			PrimaryActorTick.SetTickFunctionEnable(postInit("bCanEverTick")); \
+		} \
+	} \
 protected: \
 	virtual void BeginPlay() override { \
-	if (!init(this, #NAME, LuaStateName, LuaFilePath)) return; \
 		Super::BeginPlay(); \
-		PrimaryActorTick.SetTickFunctionEnable(postInit("bCanEverTick")); \
 	} \
 	virtual void Tick(float DeltaTime) override { \
 		tick(DeltaTime); \
@@ -54,15 +69,11 @@ class SLUA_UNREAL_API ALuaActor : public AActor, public slua_Luabase, public ILu
 	GENERATED_BODY()
 	LUABASE_BODY(LuaActor)
 public:
-	ALuaActor()
-		: AActor() 
-	{
-		PrimaryActorTick.bCanEverTick = true;
-	}
-	ALuaActor(const FObjectInitializer& ObjectInitializer) 
+	ALuaActor(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get())
 		: AActor(ObjectInitializer) 
 	{
 		PrimaryActorTick.bCanEverTick = true;
+		LUABASE_INIT_TABLE(LuaActor)
 	}
 public:
 	// below UPROPERTY and UFUNCTION can't be put to macro LUABASE_BODY
@@ -82,10 +93,11 @@ class SLUA_UNREAL_API ALuaPawn : public APawn, public slua_Luabase, public ILuaT
 	GENERATED_BODY()
 	LUABASE_BODY(LuaPawn)
 public:
-	ALuaPawn(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get()) 
+	ALuaPawn(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get())
 		: APawn(ObjectInitializer)
 	{
 		PrimaryActorTick.bCanEverTick = true;
+		LUABASE_INIT_TABLE(LuaPawn)
 	}
 public:
 	// below UPROPERTY and UFUNCTION can't be put to macro LUABASE_BODY
@@ -109,6 +121,7 @@ public:
 		: ACharacter(ObjectInitializer)
 	{
 		PrimaryActorTick.bCanEverTick = true;
+		LUABASE_INIT_TABLE(LuaCharacter)
 	}
 public:
 	// below UPROPERTY and UFUNCTION can't be put to macro LUABASE_BODY
@@ -132,6 +145,7 @@ public:
 		: AController(ObjectInitializer)
 	{
 		PrimaryActorTick.bCanEverTick = true;
+		LUABASE_INIT_TABLE(LuaController)
 	}
 public:
 	// below UPROPERTY and UFUNCTION can't be put to macro LUABASE_BODY
@@ -155,6 +169,7 @@ public:
 		: APlayerController(ObjectInitializer)
 	{
 		PrimaryActorTick.bCanEverTick = true;
+		LUABASE_INIT_TABLE(LuaPlayerController)
 	}
 public:
 	// below UPROPERTY and UFUNCTION can't be put to macro LUABASE_BODY
@@ -180,12 +195,11 @@ class SLUA_UNREAL_API ULuaActorComponent : public UActorComponent, public slua_L
 	};
 protected:
 	virtual void BeginPlay() override {
-		Super::BeginPlay();
-		if (!init(this, "LuaActorComponent", LuaStateName, LuaFilePath)) 
-			return;
+		Super::BeginPlay();		
 		if (!GetClass()->HasAnyClassFlags(CLASS_CompiledFromBlueprint))
 			ReceiveBeginPlay();
-		PrimaryComponentTick.SetTickFunctionEnable(postInit("bCanEverTick"));
+		if (luaSelfTable.isTable())
+			PrimaryComponentTick.SetTickFunctionEnable(postInit("bCanEverTick"));
 	}
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override {
 		Super::EndPlay(EndPlayReason);
@@ -221,6 +235,7 @@ public:
 		: UActorComponent(ObjectInitializer)
 	{
 		PrimaryComponentTick.bCanEverTick = true;
+		LUABASE_COMPONENT_INIT_TABLE(LuaActorComponent)
 	}
 public:
 	struct TickTmpArgs tickTmpArgs;
@@ -240,7 +255,14 @@ public:
 UCLASS()
 class SLUA_UNREAL_API ALuaGameModeBase : public AGameModeBase, public slua_Luabase, public ILuaTableObjectInterface {
 	GENERATED_BODY()
-	LUABASE_BODY(LuaGameModeBase)
+		LUABASE_BODY(LuaGameModeBase)
+public:
+	ALuaGameModeBase(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get())
+		:AGameModeBase(ObjectInitializer)
+	{
+		PrimaryActorTick.bCanEverTick = true;
+		LUABASE_INIT_TABLE(LuaGameModeBase)
+	}
 public:
 	// below UPROPERTY and UFUNCTION can't be put to macro LUABASE_BODY
 	// so copy & paste them
@@ -263,6 +285,7 @@ public:
 		:AHUD(ObjectInitializer)
 	{
 		PrimaryActorTick.bCanEverTick = true;
+		LUABASE_INIT_TABLE(LuaHUD)
 	}
 public:
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "slua")
